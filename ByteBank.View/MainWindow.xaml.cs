@@ -36,6 +36,9 @@ namespace ByteBank.View
 
         private async void BtnProcessar_Click(object sender, RoutedEventArgs e)
         {
+            var taskSchedulerUI = TaskScheduler.FromCurrentSynchronizationContext();
+            BtnProcessar.IsEnabled = false;
+            
             var contas = r_Repositorio.GetContaClientes();
 
             var resultado = new List<string>();
@@ -44,98 +47,26 @@ namespace ByteBank.View
 
             var inicio = DateTime.Now;
 
-            var contas1 = contas.Take(contas.Count() / 8);
-            var contas2 = contas.Skip(contas.Count() / 8).Take(contas.Count() / 8);
-            var contas3 = contas.Skip(contas.Count() / 8*2).Take(contas.Count() / 8);
-            var contas4 = contas.Skip(contas.Count() / 8*3).Take(contas.Count() / 8);
-            var contas5 = contas.Skip(contas.Count() / 8*4).Take(contas.Count() / 8);
-            var contas6 = contas.Skip(contas.Count() / 8*5).Take(contas.Count() / 8);
-            var contas7 = contas.Skip(contas.Count() / 8*6).Take(contas.Count() / 8);
-            var contas8 = contas.Skip(contas.Count() / 8*7);
+            var contasTarefas = contas.Select(conta =>
+            {
+                return Task.Factory.StartNew(() =>
+                {
+                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
+                    resultado.Add(resultadoConta);
+                });
+            }).ToArray();
 
-            Thread thread1 = new Thread(() =>
-            {
-                foreach (var conta in contas1)
+            Task.WhenAll(contasTarefas)
+                .ContinueWith(task =>
                 {
-                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
-                    resultado.Add(resultadoConta);
-                }
+                    var fim = DateTime.Now;
+                    AtualizarView(resultado, fim - inicio);
+                }, taskSchedulerUI)
+                .ContinueWith(task =>
+                {
+                    BtnProcessar.IsEnabled = true;
+                }, taskSchedulerUI);
 
-            });
-            Thread thread2 = new Thread(() =>
-            {
-                foreach (var conta in contas2)
-                {
-                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
-                    resultado.Add(resultadoConta);
-                }
-            });
-            Thread thread3 = new Thread(() =>
-            {
-                foreach (var conta in contas3)
-                {
-                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
-                    resultado.Add(resultadoConta);
-                }
-            });
-            Thread thread4 = new Thread(() =>
-            {
-                foreach (var conta in contas4)
-                {
-                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
-                    resultado.Add(resultadoConta);
-                }
-            });
-            Thread thread5 = new Thread(() =>
-            {
-                foreach (var conta in contas5)
-                {
-                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
-                    resultado.Add(resultadoConta);
-                }
-            });
-            Thread thread6 = new Thread(() =>
-            {
-                foreach (var conta in contas6)
-                {
-                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
-                    resultado.Add(resultadoConta);
-                }
-            });
-            Thread thread7 = new Thread(() =>
-            {
-                foreach (var conta in contas7)
-                {
-                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
-                    resultado.Add(resultadoConta);
-                }
-            });
-            Thread thread8 = new Thread(() =>
-            {
-                foreach (var conta in contas8)
-                {
-                    var resultadoConta = r_Servico.ConsolidarMovimentacao(conta);
-                    resultado.Add(resultadoConta);
-                }
-            });
-
-            thread1.Start();
-            thread2.Start();
-            thread3.Start();
-            thread4.Start();
-            thread5.Start();
-            thread6.Start();
-            thread7.Start();
-            thread8.Start();
-
-			while (thread8.IsAlive)
-			{
-                Thread.Sleep(250);
-			}
-
-            var fim = DateTime.Now;
-
-            AtualizarView(resultado, fim - inicio);
         }
 
         private void BtnCancelar_Click(object sender, RoutedEventArgs e)
